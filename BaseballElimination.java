@@ -8,9 +8,7 @@ import edu.princeton.cs.algs4.StdOut;
 public class BaseballElimination {
     private final int n;
     private final LinkedList<String> teams = new LinkedList<>();
-    private final int[] wins;
-    private final int[] losses;
-    private final int[] remain;
+    private final int[] wins, losses, remain;
     private final int[][] against;
 
     public BaseballElimination(String filename) {
