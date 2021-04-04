@@ -5,30 +5,30 @@ import edu.princeton.cs.algs4.FlowEdge;
 import edu.princeton.cs.algs4.FlowNetwork;
 import edu.princeton.cs.algs4.StdOut;
 
-class BaseballElimination {
-    private int n;
-    private LinkedList<String> t = new LinkedList<>();
-    private int[] w;
-    private int[] l;
-    private int[] r;
-    private int[][] g;
+public class BaseballElimination {
+    private final int n;
+    private final LinkedList<String> teams = new LinkedList<>();
+    private final int[] wins;
+    private final int[] losses;
+    private final int[] remain;
+    private final int[][] against;
 
     public BaseballElimination(String filename) {
         if (filename == null)
             throw new IllegalArgumentException("Argument to constructor is null");
         In in = new In(filename);
         n = in.readInt();
-        w = new int[n];
-        l = new int[n];
-        r = new int[n];
-        g = new int[n][n];
+        wins = new int[n];
+        losses = new int[n];
+        remain = new int[n];
+        against = new int[n][n];
         for (int i = 0; i < n; i++) {
-            t.add(in.readString());
-            w[i] = in.readInt();
-            l[i] = in.readInt();
-            r[i] = in.readInt();
+            teams.add(in.readString());
+            wins[i] = in.readInt();
+            losses[i] = in.readInt();
+            remain[i] = in.readInt();
             for (int j = 0; j < n; j++) {
-                g[i][j] = in.readInt();
+                against[i][j] = in.readInt();
             }
         }
     }
@@ -38,38 +38,38 @@ class BaseballElimination {
     }
 
     public Iterable<String> teams() {
-        return t;
+        return teams;
     }
 
     public int wins(String team) {
-        if (team == null || !t.contains(team))
+        if (team == null || !teams.contains(team))
             throw new IllegalArgumentException("The argument to method wins is null or invalid");
-        return w[t.indexOf(team)];
+        return wins[teams.indexOf(team)];
     }
 
     public int losses(String team) {
-        if (team == null || !t.contains(team))
+        if (team == null || !teams.contains(team))
             throw new IllegalArgumentException("The argument to method losses is null or invalid");
-        return l[t.indexOf(team)];
+        return losses[teams.indexOf(team)];
     }
 
     public int remaining(String team) {
-        if (team == null || !t.contains(team))
+        if (team == null || !teams.contains(team))
             throw new IllegalArgumentException("The argument to method remaining is null or invalid");
-        return r[t.indexOf(team)];
+        return remain[teams.indexOf(team)];
     }
 
     public int against(String team1, String team2) {
-        if (team1 == null || !t.contains(team1) || team2 == null || !t.contains(team2))
+        if (team1 == null || !teams.contains(team1) || team2 == null || !teams.contains(team2))
             throw new IllegalArgumentException("The argument to against is invalid");
-        return g[t.indexOf(team1)][t.indexOf(team2)];
+        return against[teams.indexOf(team1)][teams.indexOf(team2)];
     }
 
     private FlowNetwork getFlowNetwork(String team) {
-        int x = t.indexOf(team);
+        int x = teams.indexOf(team);
         int gvn = (n - 1) * (n - 2) / 2;
         int nv = 1 + gvn + n;
-        FlowNetwork fn = new FlowNetwork(nv);
+        FlowNetwork G = new FlowNetwork(nv);
         int s = 0;
         int t = nv - 1;
         int counter = 0;
@@ -81,7 +81,7 @@ class BaseballElimination {
                 if (j == x)
                     continue;
                 counter++;
-                fn.addEdge(new FlowEdge(s, counter, g[i][j]));
+                G.addEdge(new FlowEdge(s, counter, against[i][j]));
                 int offsetX = teamVertexBase + i;
                 int offsetY = teamVertexBase + j;
                 if (i > x) {
@@ -90,28 +90,28 @@ class BaseballElimination {
                 if (j > x) {
                     offsetY--;
                 }
-                fn.addEdge(new FlowEdge(counter, offsetY, Double.POSITIVE_INFINITY));
-                fn.addEdge(new FlowEdge(counter, offsetX, Double.POSITIVE_INFINITY));
+                G.addEdge(new FlowEdge(counter, offsetY, Double.POSITIVE_INFINITY));
+                G.addEdge(new FlowEdge(counter, offsetX, Double.POSITIVE_INFINITY));
             }
         }
         counter = 0;
         for (int i = 0; i < n; i++) {
             if (i == x)
                 continue;
-            fn.addEdge(new FlowEdge(teamVertexBase + counter, t, w[x] + r[x] - w[i]));
+            G.addEdge(new FlowEdge(teamVertexBase + counter, t, wins[x] + remain[x] - wins[i]));
             counter++;
         }
-        return fn;
+        return G;
     }
 
     public boolean isEliminated(String team) {
-        if (team == null || !t.contains(team))
+        if (team == null || !teams.contains(team))
             throw new IllegalArgumentException("The argument to method isEliminated is null or invalid");
-        int x = t.indexOf(team);
+        int x = teams.indexOf(team);
         for (int i = 0; i < n; i++) {
             if (i == x)
                 continue;
-            if (w[x] + r[x] < w[i])
+            if (wins[x] + remain[x] < wins[i])
                 return true;
         }
         FlowNetwork G = getFlowNetwork(team);
@@ -124,31 +124,32 @@ class BaseballElimination {
     }
 
     public Iterable<String> certificateOfElimination(String team) {
-        if (team == null || !t.contains(team))
+        if (team == null || !teams.contains(team))
             throw new IllegalArgumentException("The argument to method certificateOfELimination is null or invalid");
-        int teamIndex = t.indexOf(team);
+        int teamIndex = teams.indexOf(team);
         LinkedList<String> certificate = new LinkedList<>();
         for (int i = 0; i < n; i++) {
             if (i == teamIndex)
                 continue;
-            if (w[teamIndex] + r[teamIndex] < w[i]) {
-                certificate.add(t.get(i));
+            if (wins[teamIndex] + remain[teamIndex] < wins[i]) {
+                certificate.add(teams.get(i));
                 return certificate;
             }
         }
-        FlowNetwork g = getFlowNetwork(team);
-        FordFulkerson ff = new FordFulkerson(g, 0, g.V() - 1);
+        FlowNetwork G = getFlowNetwork(team);
+        FordFulkerson ff = new FordFulkerson(G, 0, G.V() - 1);
         int nGameVertices = (n - 1) * (n - 2) / 2;
         int index = 0;
         for (int i = 0; i < n; i++) {
             if (i == teamIndex)
                 continue;
             if (ff.inCut(1 + nGameVertices + index)) {
-                certificate.add(t.get(i));
+                certificate.add(teams.get(i));
             }
             index++;
         }
-        return certificate;
+        if (certificate.isEmpty()) return null;
+        else return certificate;
     }
 
     public static void main(String[] args) {
